@@ -52,7 +52,11 @@ The `config.json` file contains an array of company configurations:
         "emailIcon": "images/email.png",
         "phoneIcon": "images/phone.png",
         "websiteIcon": "images/website.png",
-        "signatureTemplate": "signature-template.html"
+        "signatureTemplate": "signature-template.html",
+        "banner": "images/company-banner.png",
+        "bannerUrl": "https://www.company.com",
+        "bannerWidth": 230,
+        "bannerHeight": 50
     }
 ]
 ```
@@ -74,6 +78,10 @@ The `config.json` file contains an array of company configurations:
 | `phoneIcon` | string | Path to phone icon |
 | `websiteIcon` | string | Path to website icon |
 | `signatureTemplate` | string | Path to HTML template file |
+| `banner` | string | Path to banner image |
+| `bannerUrl` | string | URL banner should link to |
+| `bannerWidth` | number | Banner width in pixels |
+| `bannerHeight` | number | Banner height in pixels |
 
 ### Signature Template
 
@@ -98,6 +106,10 @@ The signature template is an HTML file with placeholders that get replaced with 
 | `[EMAIL_ICON]` | Email icon path |
 | `[PHONE_ICON]` | Phone icon path |
 | `[WEBSITE_ICON]` | Website icon path |
+| `[BANNER]` | Banner image path |
+| `[BANNER_URL]` | Banner link URL |
+| `[BANNER_WIDTH]` | Banner width |
+| `[BANNER_HEIGHT]` | Banner height |
 
 ## Installation
 
@@ -151,7 +163,11 @@ To add a new company:
        "emailIcon": "images/email.png",
        "phoneIcon": "images/phone.png",
        "websiteIcon": "images/website.png",
-       "signatureTemplate": "signature-template.html"
+       "signatureTemplate": "signature-template.html",
+       "banner": "images/new-company-banner.png",
+       "bannerUrl": "https://www.newcompany.com",
+       "bannerWidth": 230,
+       "bannerHeight": 50
    }
    ```
 

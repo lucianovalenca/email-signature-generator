@@ -1,0 +1,19 @@
+{
+  "name": "email-signature-generator",
+  "version": "1.0.0",
+  "description": "A professional email signature generator with customizable templates",
+  "private": true,
+  "keywords": ["email", "signature", "generator", "template", "professional"],
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "dev": "npx http-server . -p 8080 -o",
+    "start": "npx http-server . -p 3000",
+    "build": "echo 'Static HTML project - no build required'",
+    "preview": "npx http-server . -p 4173"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
+EOF < /dev/null

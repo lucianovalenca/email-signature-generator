@@ -1,0 +1,21 @@
+[
+    {
+        "id": "take5",
+        "name": "Take 5",
+        "website": "http://www.take5.com.br",
+        "websiteDisplay": "take5.com.br",
+        "logo": "images/logo.png",
+        "logoWidth": 83,
+        "logoHeight": 45,
+        "borderColor": "#33B16B",
+        "websiteColor": "#33B16B",
+        "emailIcon": "images/email.png",
+        "phoneIcon": "images/phone.png",
+        "websiteIcon": "images/website.png",
+        "signatureTemplate": "signature-template.html",
+        "banner": "images/banner.png",
+        "bannerUrl": "http://www.take5.com.br",
+        "bannerWidth": 230,
+        "bannerHeight": 50
+    }
+]

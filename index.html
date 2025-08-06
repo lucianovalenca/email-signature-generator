@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Assinaturas de Email</title>
+    <link rel="icon" href="images/favicon/cropped-favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" href="images/favicon/cropped-favicon-192x192.png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="images/favicon/cropped-favicon-180x180.png" />
+    <meta name="msapplication-TileImage" content="images/favicon/cropped-favicon-270x270.png" />
+    <meta name="apple-mobile-web-app-title" content="Gerador de QR Code" />
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .signature-preview {
+            font-family: Arial, sans-serif;
+        }
+        .signature-preview table {
+            border-collapse: collapse;
+        }
+        .signature-preview img {
+            max-width: 100%;
+            height: auto;
+        }
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+        .copy-container {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            opacity: 0;
+        }
+        .placeholder-text {
+            color: #9CA3AF !important;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="min-h-screen bg-gray-50 py-8">
+            <div class="max-w-6xl mx-auto px-4">
+                <header class="text-center mb-8">
+                    <div class="flex items-center justify-center gap-4 mb-4">
+                        <img 
+                            src="images/generator-logo.svg" 
+                            class="h-12 w-auto"
+                        />
+                        <h1 class="text-3xl font-bold text-gray-900">
+                            Gerador de Assinaturas de Email
+                        </h1>
+                    </div>
+                    <p class="text-gray-600">
+                        Crie sua assinatura profissional personalizada
+                    </p>
+                </header>
+
+                <div v-if="loading" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p class="mt-2 text-gray-600">Carregando configurações...</p>
+                </div>
+
+                <div v-else-if="error" class="text-center py-8">
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <p class="font-bold">Erro ao carregar configurações</p>
+                        <p>{{ error }}</p>
+                    </div>
+                </div>
+
+                <div v-else class="grid lg:grid-cols-2 gap-8">
+                    <!-- Formulário -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-6 text-gray-800">
+                            Dados Pessoais
+                        </h2>
+                        
+                        <form @submit.prevent class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Empresa
+                                </label>
+                                <select 
+                                    v-model="selectedCompany" 
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione uma empresa</option>
+                                    <option 
+                                        v-for="company in companies" 
+                                        :key="company.id" 
+                                        :value="company.id"
+                                    >
+                                        {{ company.name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Nome Completo
+                                </label>
+                                <input 
+                                    v-model="formData.name"
+                                    type="text" 
+                                    placeholder="Digite seu nome completo"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Cargo
+                                </label>
+                                <input 
+                                    v-model="formData.jobTitle"
+                                    type="text" 
+                                    placeholder="Digite seu cargo"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Email
+                                </label>
+                                <input 
+                                    v-model="formData.email"
+                                    type="email" 
+                                    placeholder="seu.email@empresa.com"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Telefone
+                                </label>
+                                <input 
+                                    v-model="formData.phone"
+                                    type="tel" 
+                                    placeholder="(11) 99999-9999"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div class="pt-4 space-y-3">
+                                <button 
+                                    @click="copySignature"
+                                    :disabled="!isFormValid"
+                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Copiar Assinatura
+                                </button>
+                                
+                                <button 
+                                    @click="showInstructions = true"
+                                    type="button"
+                                    class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                                >
+                                    Como Instalar a Assinatura
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold mb-6 text-gray-800">
+                            Preview da Assinatura
+                        </h2>
+                        
+                        <div class="border border-gray-200 rounded-md p-4 bg-gray-50 min-h-[200px]">
+                            <div v-if="!selectedCompany" class="text-center text-gray-500 py-8">
+                                Selecione uma empresa para ver o preview
+                            </div>
+                            <div v-else-if="loadingTemplate" class="text-center text-gray-500 py-8">
+                                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-gray-400"></div>
+                                <p class="mt-2">Carregando template...</p>
+                            </div>
+                            <div v-else v-html="generatedSignatureWithPlaceholders" class="signature-preview"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Instruções -->
+            <div 
+                v-if="showInstructions" 
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                @click.self="showInstructions = false"
+            >
+                <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                    <div class="p-6 border-b">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-semibold">Como Instalar sua Assinatura</h3>
+                            <button 
+                                @click="showInstructions = false"
+                                class="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <!-- Abas -->
+                        <div class="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+                            <button
+                                v-for="client in emailClients"
+                                :key="client.id"
+                                @click="activeTab = client.id"
+                                :class="[
+                                    'flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors',
+                                    activeTab === client.id 
+                                        ? 'bg-white text-blue-600 shadow-sm' 
+                                        : 'text-gray-600 hover:text-gray-900'
+                                ]"
+                            >
+                                {{ client.name }}
+                            </button>
+                        </div>
+
+                        <!-- Conteúdo das Abas -->
+                        <div class="overflow-y-auto max-h-[60vh]">
+                            <div v-for="client in emailClients" :key="client.id" v-show="activeTab === client.id">
+                                <div class="space-y-6">
+                                    <div v-for="(step, index) in client.steps" :key="index">
+                                        <div class="flex gap-4 mb-3">
+                                            <div class="flex-shrink-0 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold">
+                                                {{ index + 1 }}
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="text-gray-700">{{ step.text }}</p>
+                                            </div>
+                                        </div>
+                                        <div v-if="step.image" class="ml-12">
+                                            <img 
+                                                :src="step.image" 
+                                                :alt="`Passo ${index + 1} - ${client.name}`"
+                                                class="w-full max-w-md rounded-lg border border-gray-200 shadow-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toast de Sucesso -->
+            <transition name="fade">
+                <div 
+                    v-if="showToast"
+                    class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50"
+                >
+                    Assinatura copiada com sucesso!
+                </div>
+            </transition>
+
+            <!-- Container temporário para cópia -->
+            <div ref="copyContainer" class="copy-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, watch, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // Estado reativo
+                const selectedCompany = ref('');
+                const formData = ref({
+                    name: '',
+                    jobTitle: '',
+                    email: '',
+                    phone: ''
+                });
+                const showInstructions = ref(false);
+                const activeTab = ref('gmail');
+                const showToast = ref(false);
+                const copyContainer = ref(null);
+                const loading = ref(true);
+                const loadingTemplate = ref(false);
+                const error = ref('');
+                const companies = ref([]);
+                const signatureTemplates = ref({});
+
+                // Clientes de email (mantido estático)
+                const emailClients = ref([
+                    {
+                        id: 'gmail',
+                        name: 'Gmail',
+                        steps: [
+                            { text: 'Abra o Gmail e clique na engrenagem (Configurações)', image: null },
+                            { text: 'Clique em "Mostrar todas as configurações"', image: null },
+                            { text: 'Role para baixo até encontrar "Assinatura"', image: null },
+                            { text: 'Clique em "Criar novo" se não tiver uma assinatura', image: null },
+                            { text: 'Cole sua assinatura na área de edição', image: '' },
+                            { text: 'Role para baixo e clique em "Salvar alterações"', image: null },
+                            { text: 'Escreva um novo e-mail e veja sua nova assinatura!', image: 'images/tutorials/gmail-webmail-2.jpg' }
+                        ]
+                    },
+                    {
+                        id: 'apple-mail',
+                        name: 'Apple Mail (MacOS)',
+                        steps: [
+                            { text: 'Com o aplicativo de email aberto, clique em Mail e, em seguida, Ajustes', image: 'images/tutorials/mail-ajustes.png' },
+                            { text: 'Na janela de preferências, clique na aba Assinaturas.', image: null },
+                            { text: 'Clique no botão "+" na coluna do meio', image: null },
+                            { text: 'Cole sua assinatura na área de edição à direita', image: 'images/tutorials/apple-mail-macos-1.jpg' },
+                            { text: 'Importante: certifique-se de que a opção "Sempre corresponder à fonte padrão da minha mensagem" esteja desmarcada, caso contrário, sua assinatura aparecerá em texto simples.', image: null },
+                            { text: 'Nesta visualização, as imagens aparecerão em branco. Não se preocupe – assim que você for redigir um e-mail, as imagens aparecerão.', image: null },
+                            { text: 'Feche a janela de preferências para salvar', image: null },
+                            { text: 'Importante: ainda está vendo uma versão em texto simples? Tente desmarcar a caixa de seleção "Colocar assinatura acima do texto citado" e colar sua assinatura novamente.', image: 'images/tutorials/apple-mail-macos-2.jpg' }
+                        ]
+                    },
+                    {
+                        id: 'mail-app-ios',
+                        name: 'Mail App (iOS)',
+                        steps: [
+                            { text: 'Abra o Gerador de Assinaturas através do dispositivo iOS e copie a assinatura gerada', image: null },
+                            { text: 'Acesse o aplicativo Ajustes no seu dispositivo iOS, role a tela para baixo e selecione Mail, role a tela para baixo e selecione Assinatura', image: 'images/tutorials/apple-mail-ios-updated-1.jpg' },
+                            { text: 'Cole sua assinatura no editor de assinaturas (pressione e segure o editor para abrir a opção de colar).', image: 'images/tutorials/apple-mail-ios-updated-2.jpg' },
+                            { text: 'Acesse o aplicativo Mail, escreva um novo e-mail e veja sua nova assinatura!', image: 'images/tutorials/apple-mail-ios-updated-3.jpg' }
+                        ]
+                    },
+                    {
+                        id: 'webmail',
+                        name: 'Webmail Geral',
+                        steps: [
+                            { text: 'Acesse seu webmail e procure por "Configurações" ou "Settings"', image: null },
+                            { text: 'Procure pela seção "Assinatura" ou "Signature"', image: null },
+                            { text: 'Cole sua assinatura na área de edição', image: '' },
+                            { text: 'Certifique-se de selecionar "HTML" como formato', image: null },
+                            { text: 'Salve as configurações', image: null },
+                            { text: 'Teste enviando um email para verificar se a assinatura aparece corretamente', image: null }
+                        ]
+                    }
+                ]);
+
+                // Função para carregar configurações
+                const loadConfig = async () => {
+                    try {
+                        loading.value = true;
+                        const response = await fetch('config.json');
+                        if (!response.ok) {
+                            throw new Error(`Erro ao carregar config.json: ${response.status}`);
+                        }
+                        const config = await response.json();
+                        companies.value = config;
+                        error.value = '';
+                    } catch (err) {
+                        console.error('Erro ao carregar configurações:', err);
+                        error.value = err.message;
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // Função para carregar template de assinatura
+                const loadSignatureTemplate = async (templatePath) => {
+                    try {
+                        if (signatureTemplates.value[templatePath]) {
+                            return signatureTemplates.value[templatePath];
+                        }
+
+                        loadingTemplate.value = true;
+                        const response = await fetch(templatePath);
+                        if (!response.ok) {
+                            throw new Error(`Erro ao carregar template: ${response.status}`);
+                        }
+                        const template = await response.text();
+                        signatureTemplates.value[templatePath] = template;
+                        return template;
+                    } catch (err) {
+                        console.error('Erro ao carregar template:', err);
+                        return '';
+                    } finally {
+                        loadingTemplate.value = false;
+                    }
+                };
+
+                // Função para processar template com dados
+                const processTemplate = (template, company, userData, isPreview = false) => {
+                    if (!template || !company) return '';
+
+                    const name = userData.name || (isPreview ? '[Seu Nome]' : '');
+                    const jobTitle = userData.jobTitle || (isPreview ? '[Seu Cargo]' : '');
+                    const email = userData.email || (isPreview ? 'seu.email@empresa.com' : '');
+                    const phone = userData.phone || (isPreview ? '(11) 99999-9999' : '');
+
+                    let processedTemplate = template
+                        .replace(/\[NAME\]/g, name)
+                        .replace(/\[JOB_TITLE\]/g, jobTitle)
+                        .replace(/\[EMAIL\]/g, email)
+                        .replace(/\[PHONE\]/g, phone)
+                        .replace(/\[COMPANY_NAME\]/g, company.name)
+                        .replace(/\[WEBSITE\]/g, company.website)
+                        .replace(/\[WEBSITE_DISPLAY\]/g, company.websiteDisplay)
+                        .replace(/\[LOGO\]/g, company.logo)
+                        .replace(/\[LOGO_WIDTH\]/g, company.logoWidth)
+                        .replace(/\[LOGO_HEIGHT\]/g, company.logoHeight)
+                        .replace(/\[BORDER_COLOR\]/g, company.borderColor)
+                        .replace(/\[WEBSITE_COLOR\]/g, company.websiteColor)
+                        .replace(/\[EMAIL_ICON\]/g, company.emailIcon)
+                        .replace(/\[PHONE_ICON\]/g, company.phoneIcon)
+                        .replace(/\[WEBSITE_ICON\]/g, company.websiteIcon)
+                        .replace(/\[BANNER\]/g, company.banner)
+                        .replace(/\[BANNER_URL\]/g, company.bannerUrl)
+                        .replace(/\[BANNER_WIDTH\]/g, company.bannerWidth)
+                        .replace(/\[BANNER_HEIGHT\]/g, company.bannerHeight);
+
+                    // Adicionar classes de placeholder para preview
+                    if (isPreview) {
+                        if (!userData.name) {
+                            processedTemplate = processedTemplate.replace(
+                                /(<[^>]*>[^<]*)\[Seu Nome\]([^<]*<[^>]*>)/g,
+                                '$1<span class="placeholder-text">[Seu Nome]</span>$2'
+                            );
+                        }
+                        if (!userData.jobTitle) {
+                            processedTemplate = processedTemplate.replace(
+                                /(<[^>]*>[^<]*)\[Seu Cargo\]([^<]*<[^>]*>)/g,
+                                '$1<span class="placeholder-text">[Seu Cargo]</span>$2'
+                            );
+                        }
+                        if (!userData.email) {
+                            processedTemplate = processedTemplate.replace(
+                                /(<[^>]*>[^<]*)(seu\.email@empresa\.com)([^<]*<[^>]*>)/g,
+                                '$1<span class="placeholder-text">seu.email@empresa.com</span>$3'
+                            );
+                        }
+                        if (!userData.phone) {
+                            processedTemplate = processedTemplate.replace(
+                                /(<[^>]*>[^<]*)$$\11$$ 99999-9999([^<]*<[^>]*>)/g,
+                                '$1<span class="placeholder-text">(11) 99999-9999</span>$2'
+                            );
+                        }
+                    }
+
+                    return processedTemplate;
+                };
+
+                // Computed
+                const currentCompany = computed(() => {
+                    return companies.value.find(c => c.id === selectedCompany.value);
+                });
+
+                const isFormValid = computed(() => {
+                    return selectedCompany.value && 
+                           formData.value.name && 
+                           formData.value.jobTitle && 
+                           formData.value.email && 
+                           formData.value.phone;
+                });
+
+                // Reactive signature templates
+                const generatedSignature = ref('');
+                const generatedSignatureWithPlaceholders = ref('');
+
+                // Function to update signatures
+                const updateSignatures = async () => {
+                    if (!currentCompany.value) {
+                        generatedSignature.value = '';
+                        generatedSignatureWithPlaceholders.value = '';
+                        return;
+                    }
+                    
+                    const company = currentCompany.value;
+                    const template = await loadSignatureTemplate(company.signatureTemplate);
+                    
+                    if (isFormValid.value) {
+                        generatedSignature.value = processTemplate(template, company, formData.value, false);
+                    }
+                    
+                    generatedSignatureWithPlaceholders.value = processTemplate(template, company, formData.value, true);
+                };
+
+                // Métodos
+                const copySignature = async () => {
+                    if (!isFormValid.value) return;
+                    
+                    try {
+                        const signature = generatedSignature.value;
+                        if (!signature) return;
+
+                        // Criar um elemento temporário com o HTML renderizado
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = signature;
+                        tempDiv.style.position = 'absolute';
+                        tempDiv.style.left = '-9999px';
+                        tempDiv.style.top = '-9999px';
+                        document.body.appendChild(tempDiv);
+
+                        // Selecionar o conteúdo
+                        const range = document.createRange();
+                        range.selectNodeContents(tempDiv);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        // Tentar usar a API moderna primeiro
+                        if (navigator.clipboard && window.ClipboardItem) {
+                            try {
+                                // Criar um blob com o HTML
+                                const htmlBlob = new Blob([signature], { type: 'text/html' });
+                                const textBlob = new Blob([tempDiv.innerText], { type: 'text/plain' });
+                                
+                                const clipboardItem = new ClipboardItem({
+                                    'text/html': htmlBlob,
+                                    'text/plain': textBlob
+                                });
+                                
+                                await navigator.clipboard.write([clipboardItem]);
+                            } catch (clipboardError) {
+                                // Fallback para execCommand se a API moderna falhar
+                                document.execCommand('copy');
+                            }
+                        } else {
+                            // Fallback para navegadores mais antigos
+                            document.execCommand('copy');
+                        }
+
+                        // Limpar
+                        selection.removeAllRanges();
+                        document.body.removeChild(tempDiv);
+
+                        showToast.value = true;
+                        setTimeout(() => {
+                            showToast.value = false;
+                        }, 3000);
+                    } catch (err) {
+                        console.error('Erro ao copiar:', err);
+                        alert('Erro ao copiar a assinatura. Tente novamente.');
+                    }
+                };
+
+                // Watchers
+                watch(selectedCompany, (newValue) => {
+                    if (newValue) {
+                        const company = companies.value.find(c => c.id === newValue);
+                        if (company) {
+                            // Pré-preencher o email se estiver vazio
+                            if (!formData.value.email) {
+                                if (company.id === 'take5') {
+                                    formData.value.email = 'seu.email@take5.com.br';
+                                } else {
+                                    // Extrair domínio do website da empresa
+                                    const domain = company.websiteDisplay || company.website.replace(/https?:\/\/(www\.)?/, '');
+                                    formData.value.email = `seu.email@${domain}`;
+                                }
+                            }
+                        }
+                    }
+                    updateSignatures();
+                });
+
+                // Watch for form data changes to update signatures
+                watch(formData, () => {
+                    updateSignatures();
+                }, { deep: true });
+
+                // Lifecycle
+                onMounted(() => {
+                    loadConfig();
+                });
+
+                return {
+                    selectedCompany,
+                    formData,
+                    showInstructions,
+                    activeTab,
+                    showToast,
+                    loading,
+                    loadingTemplate,
+                    error,
+                    companies,
+                    emailClients,
+                    currentCompany,
+                    isFormValid,
+                    generatedSignature,
+                    generatedSignatureWithPlaceholders,
+                    copySignature,
+                    copyContainer,
+                    updateSignatures
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
